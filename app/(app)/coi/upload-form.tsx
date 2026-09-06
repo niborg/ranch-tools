@@ -1,8 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { uploadCoi } from "@/app/actions/coi";
 import { snapshotCoiFile } from "@/lib/coi/snapshot";
 
 export function UploadForm() {
@@ -11,16 +10,9 @@ export function UploadForm() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [reading, setReading] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [state, formAction, pending] = useActionState(uploadCoi, undefined);
-  const error = localError ?? state?.error;
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const busy = pending || reading;
-
-  useEffect(() => {
-    if (state?.id) {
-      router.push(`/coi/${state.id}`);
-    }
-  }, [router, state?.id]);
 
   async function captureFile(input: HTMLInputElement, file: File | undefined) {
     if (!file) {
@@ -35,32 +27,50 @@ export function UploadForm() {
       transfer.items.add(copy);
       input.files = transfer.files;
       setFileName(copy.name);
-      setLocalError(null);
+      setError(null);
     } catch {
       fileRef.current = null;
       input.value = "";
       setFileName(null);
-      setLocalError("That file couldn't be read. Try choosing it again.");
+      setError("That file couldn't be read. Try choosing it again.");
     } finally {
       setReading(false);
     }
   }
 
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const file = fileRef.current;
+    if (!file) {
+      setError("Choose a PDF to upload.");
+      return;
+    }
+
+    setPending(true);
+    setError(null);
+    try {
+      const data = new FormData();
+      data.set("file", file);
+      const response = await fetch("/api/coi", {
+        method: "POST",
+        body: data,
+        credentials: "same-origin",
+      });
+      const payload = (await response.json()) as { id?: string; error?: string };
+      if (!response.ok || !payload.id) {
+        setError(payload.error ?? "That upload didn't go through. Try again.");
+        return;
+      }
+      router.push(`/coi/${payload.id}`);
+    } catch {
+      setError("That upload didn't go through. Try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
-    <form
-      action={formAction}
-      className="flex flex-col gap-4"
-      onSubmit={(event) => {
-        const file = fileRef.current;
-        const input = event.currentTarget.querySelector('input[name="file"]');
-        if (!file || !(input instanceof HTMLInputElement)) {
-          return;
-        }
-        const transfer = new DataTransfer();
-        transfer.items.add(file);
-        input.files = transfer.files;
-      }}
-    >
+    <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <label
         className={`flex min-h-40 cursor-pointer flex-col items-center justify-center px-4 py-8 text-center ${
           dragOver ? "ranch-drop-hot ranch-drop" : "ranch-drop"
