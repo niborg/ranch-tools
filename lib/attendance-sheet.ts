@@ -153,10 +153,11 @@ export async function listAttendanceSheets(): Promise<AttendanceSheetPublic[]> {
 export function jpegAttachment(
   bytes: ArrayBuffer,
   weekStart: string,
-): { content: string; filename: string; type: string } {
+): { content: string; filename: string; type: string; disposition: "attachment" } {
   return {
     content: Buffer.from(bytes).toString("base64"),
     filename: `santos-hours-${attendanceWeekId(weekStart)}.jpg`,
     type: "image/jpeg",
+    disposition: "attachment",
   };
 }

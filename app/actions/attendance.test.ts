@@ -137,6 +137,7 @@ describe("submitAttendance", () => {
         content: Buffer.from([9, 8, 7]).toString("base64"),
         filename: "santos-hours-2026-36.jpg",
         type: "image/jpeg",
+        disposition: "attachment",
       },
     ]);
   });

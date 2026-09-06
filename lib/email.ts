@@ -4,6 +4,7 @@ export type RanchEmailAttachment = {
   content: string;
   filename: string;
   type: string;
+  disposition: "attachment" | "inline";
 };
 
 export type RanchEmail = {

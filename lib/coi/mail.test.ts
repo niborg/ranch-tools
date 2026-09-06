@@ -26,6 +26,7 @@ describe("pdfAttachment", () => {
       content: Buffer.from([1, 2, 3]).toString("base64"),
       filename: "acme.pdf",
       type: "application/pdf",
+      disposition: "attachment",
     });
   });
 });
@@ -105,6 +106,7 @@ describe("notifyCoiReview", () => {
         content: Buffer.from([37, 80, 68, 70]).toString("base64"),
         filename: "acme.pdf",
         type: "application/pdf",
+        disposition: "attachment",
       },
     ]);
     expect(message.text).toContain("This certificate is sufficient for the shoot.");

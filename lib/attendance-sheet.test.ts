@@ -117,6 +117,7 @@ describe("jpegAttachment", () => {
       content: Buffer.from([1, 2, 3]).toString("base64"),
       filename: "santos-hours-2026-36.jpg",
       type: "image/jpeg",
+      disposition: "attachment",
     });
   });
 });

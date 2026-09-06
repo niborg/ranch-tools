@@ -29,6 +29,7 @@ export function pdfAttachment(
     content: Buffer.from(bytes).toString("base64"),
     filename: attachmentFilename(filename),
     type: "application/pdf",
+    disposition: "attachment",
   };
 }
 
