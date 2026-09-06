@@ -49,11 +49,13 @@ export function UploadForm() {
     setPending(true);
     setError(null);
     try {
-      const data = new FormData();
-      data.set("file", file);
       const response = await fetch("/api/coi", {
         method: "POST",
-        body: data,
+        headers: {
+          "content-type": file.type || "application/pdf",
+          "x-coi-filename": encodeURIComponent(file.name),
+        },
+        body: file,
         credentials: "same-origin",
       });
       const payload = (await response.json()) as { id?: string; error?: string };

@@ -2,7 +2,8 @@
 
 import { isAuthenticated } from "@/lib/auth";
 import { runCoiReview } from "@/lib/coi/review";
-import { readCoiMeta, writeCoiMeta, writeCoiPdf } from "@/lib/coi/storage";
+import { persistCoiUpload } from "@/lib/coi/upload";
+import { readCoiMeta } from "@/lib/coi/storage";
 import {
   isReviewId,
   toPublicReview,
@@ -34,22 +35,14 @@ export async function uploadCoi(
     return { error: validation.error };
   }
 
-  const id = crypto.randomUUID();
-
   try {
-    await writeCoiPdf(id, validation.file);
-    await writeCoiMeta(id, {
-      status: "queued",
-      filename: validation.file.name,
-      createdAt: new Date().toISOString(),
-    });
+    const id = await persistCoiUpload(validation.file);
+    console.log("COI uploaded", id);
+    return { id };
   } catch (error) {
     console.error("COI upload failed", error);
     return { error: "Uploads aren't configured yet." };
   }
-
-  console.log("COI uploaded", id);
-  return { id };
 }
 
 export async function getCoiReview(

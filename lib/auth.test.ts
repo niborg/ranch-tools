@@ -16,7 +16,9 @@ import {
   clearSessionCookie,
   createSessionToken,
   isAuthenticated,
+  isAuthenticatedRequest,
   passwordMatches,
+  sessionTokenFromCookieHeader,
   setSessionCookie,
   sitePasswordConfigured,
   verifySessionToken,
@@ -187,6 +189,26 @@ describe("cookie session helpers", () => {
     await setSessionCookie();
 
     expect(cookieStore.set.mock.calls[0][2]).toMatchObject({ secure: true });
+  });
+
+  it("reads the session token out of a Cookie header", () => {
+    const token = createSessionToken();
+    expect(
+      sessionTokenFromCookieHeader(`other=1; ${SESSION_COOKIE}=${token}`),
+    ).toBe(token);
+    expect(sessionTokenFromCookieHeader(null)).toBeUndefined();
+  });
+
+  it("authenticates a Request from its Cookie header", () => {
+    const token = createSessionToken();
+    const request = new Request("https://ranch.knipe.io/api/coi", {
+      headers: { cookie: `${SESSION_COOKIE}=${token}` },
+    });
+
+    expect(isAuthenticatedRequest(request)).toBe(true);
+    expect(
+      isAuthenticatedRequest(new Request("https://ranch.knipe.io/api/coi")),
+    ).toBe(false);
   });
 
   it("clears the session cookie", async () => {

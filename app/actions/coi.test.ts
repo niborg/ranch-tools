@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const isAuthenticated = vi.fn();
-const writeCoiPdf = vi.fn();
-const writeCoiMeta = vi.fn();
+const persistCoiUpload = vi.fn();
 const readCoiMeta = vi.fn();
 const runCoiReview = vi.fn();
 
@@ -10,9 +9,11 @@ vi.mock("@/lib/auth", () => ({
   isAuthenticated: () => isAuthenticated(),
 }));
 
+vi.mock("@/lib/coi/upload", () => ({
+  persistCoiUpload: (...args: unknown[]) => persistCoiUpload(...args),
+}));
+
 vi.mock("@/lib/coi/storage", () => ({
-  writeCoiPdf: (...args: unknown[]) => writeCoiPdf(...args),
-  writeCoiMeta: (...args: unknown[]) => writeCoiMeta(...args),
   readCoiMeta: (...args: unknown[]) => readCoiMeta(...args),
 }));
 
@@ -33,8 +34,7 @@ function formWith(file?: File): FormData {
 describe("uploadCoi", () => {
   beforeEach(() => {
     isAuthenticated.mockReset();
-    writeCoiPdf.mockReset();
-    writeCoiMeta.mockReset();
+    persistCoiUpload.mockReset();
     runCoiReview.mockReset();
   });
 
@@ -44,7 +44,7 @@ describe("uploadCoi", () => {
     await expect(uploadCoi(undefined, formWith())).resolves.toEqual({
       error: "Please log in again.",
     });
-    expect(writeCoiPdf).not.toHaveBeenCalled();
+    expect(persistCoiUpload).not.toHaveBeenCalled();
   });
 
   it("rejects a missing file before touching storage", async () => {
@@ -53,29 +53,27 @@ describe("uploadCoi", () => {
     await expect(uploadCoi(undefined, formWith())).resolves.toEqual({
       error: "Choose a PDF to upload.",
     });
-    expect(writeCoiPdf).not.toHaveBeenCalled();
+    expect(persistCoiUpload).not.toHaveBeenCalled();
   });
 
   it("stores the PDF and returns the review id", async () => {
     isAuthenticated.mockResolvedValue(true);
-    writeCoiPdf.mockResolvedValue(undefined);
-    writeCoiMeta.mockResolvedValue(undefined);
+    persistCoiUpload.mockResolvedValue("2c1d6b3a-4f10-4a22-9b80-6d2e1f0a9c11");
 
     const file = new File([new Uint8Array(32)], "acme.pdf", {
       type: "application/pdf",
     });
 
-    const result = await uploadCoi(undefined, formWith(file));
-    expect(result.id).toMatch(/^[0-9a-f-]{36}$/i);
-    expect(result.error).toBeUndefined();
-    expect(writeCoiPdf).toHaveBeenCalledOnce();
-    expect(writeCoiMeta).toHaveBeenCalledOnce();
+    await expect(uploadCoi(undefined, formWith(file))).resolves.toEqual({
+      id: "2c1d6b3a-4f10-4a22-9b80-6d2e1f0a9c11",
+    });
+    expect(persistCoiUpload).toHaveBeenCalledOnce();
     expect(runCoiReview).not.toHaveBeenCalled();
   });
 
   it("returns a friendly error when R2 is missing", async () => {
     isAuthenticated.mockResolvedValue(true);
-    writeCoiPdf.mockRejectedValue(new Error("COI_BUCKET binding is missing"));
+    persistCoiUpload.mockRejectedValue(new Error("COI_BUCKET binding is missing"));
 
     const file = new File([new Uint8Array(32)], "acme.pdf", {
       type: "application/pdf",

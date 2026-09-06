@@ -80,6 +80,38 @@ export function verifySessionToken(token: string | undefined): boolean {
   }
 }
 
+export function sessionTokenFromCookieHeader(
+  header: string | null | undefined,
+): string | undefined {
+  if (!header) {
+    return undefined;
+  }
+
+  for (const part of header.split(";")) {
+    const separator = part.indexOf("=");
+    if (separator <= 0) {
+      continue;
+    }
+    const name = part.slice(0, separator).trim();
+    if (name !== SESSION_COOKIE) {
+      continue;
+    }
+    try {
+      return decodeURIComponent(part.slice(separator + 1).trim());
+    } catch {
+      return part.slice(separator + 1).trim();
+    }
+  }
+
+  return undefined;
+}
+
+export function isAuthenticatedRequest(request: Request): boolean {
+  return verifySessionToken(
+    sessionTokenFromCookieHeader(request.headers.get("cookie")),
+  );
+}
+
 export async function isAuthenticated(): Promise<boolean> {
   const store = await cookies();
   return verifySessionToken(store.get(SESSION_COOKIE)?.value);
