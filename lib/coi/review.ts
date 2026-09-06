@@ -1,6 +1,8 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { notifyCoiReview } from "./mail";
 import { loadCoiSkill } from "./skill";
 import { readCoiMeta, readCoiPdf, writeCoiMeta } from "./storage";
-import { canStartReview } from "./types";
+import { canStartReview, type CoiMeta } from "./types";
 
 const DEFAULT_MODEL = "claude-opus-5";
 const ANTHROPIC_TIMEOUT_MS = 180_000;
@@ -123,6 +125,27 @@ export async function reviewCoiWithAnthropic(
   return textFromAnthropicResponse(data);
 }
 
+async function ranchEmailEnv(): Promise<{
+  EMAIL?: unknown;
+  ATTENDANCE_SITE_URL?: string;
+}> {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    return env as { EMAIL?: unknown; ATTENDANCE_SITE_URL?: string };
+  } catch {
+    return {};
+  }
+}
+
+async function finishReview(
+  id: string,
+  meta: CoiMeta,
+  pdf: ArrayBuffer | null,
+): Promise<void> {
+  await writeCoiMeta(id, meta);
+  await notifyCoiReview(await ranchEmailEnv(), id, meta, pdf);
+}
+
 export async function runCoiReview(id: string): Promise<void> {
   if (inFlight.has(id)) {
     return;
@@ -140,25 +163,33 @@ export async function runCoiReview(id: string): Promise<void> {
 
     const pdf = await readCoiPdf(id);
     if (!pdf) {
-      await writeCoiMeta(id, {
-        ...meta,
-        status: "error",
-        error: "The uploaded file could not be read.",
-      });
+      await finishReview(
+        id,
+        {
+          ...meta,
+          status: "error",
+          error: "The uploaded file could not be read.",
+        },
+        null,
+      );
       return;
     }
 
     const result = await reviewCoiWithAnthropic(pdf, loadCoiSkill());
-    await writeCoiMeta(id, { ...meta, status: "done", result });
+    await finishReview(id, { ...meta, status: "done", result }, pdf);
     console.log("COI review finished", id);
   } catch (error) {
     const meta = await readCoiMeta(id);
     if (meta) {
-      await writeCoiMeta(id, {
-        ...meta,
-        status: "error",
-        error: userFacingReviewError(error),
-      });
+      await finishReview(
+        id,
+        {
+          ...meta,
+          status: "error",
+          error: userFacingReviewError(error),
+        },
+        await readCoiPdf(id),
+      );
     }
     console.error("COI review failed", {
       id,

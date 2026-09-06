@@ -77,9 +77,13 @@ Each week's JPEG lives at `sheets/{year}-{week}/sheet.jpg` in the hours R2 bucke
 
 Cloudflare cron is UTC and does not follow DST, so the Worker fires at **23:00 UTC Wednesday** and **00:00 UTC Thursday** and only sends when it is actually 4pm in `America/Los_Angeles`.
 
+## COI reviews
+
+After someone uploads a certificate and the review finishes, the same sender emails `nk@nknipe.com` with the PDF attached and the Anthropic write-up in the body (or the failure reason if the review did not finish). Add `nk@nknipe.com` as a verified destination so a 10 MB COI stays under the 25 MiB verified-recipient cap.
+
 Email will not send until Email Sending is onboarded for **ranch.knipe.io** (not Email Routing — Routing would move apex MX). In the Cloudflare dashboard: **Compute → Email Service → Email Sending → Onboard Domain → ranch.knipe.io**. That adds bounce/SPF/DKIM records under `cf-bounce.ranch.knipe.io` and DMARC under `_dmarc.ranch.knipe.io`.
 
-Add `susie.knipe@gmail.com` and `suzeadmin@gmail.com` as destination addresses and click the confirmation links. Sending to those verified addresses stays on the Workers Free plan.
+Add `susie.knipe@gmail.com`, `suzeadmin@gmail.com`, and `nk@nknipe.com` as destination addresses and click the confirmation links. Sending to those verified addresses stays on the Workers Free plan.
 
 `npm run dev` can show the form, but the report email needs the Worker `EMAIL` binding (`npm run preview` or production).
 
@@ -114,7 +118,7 @@ lib/login-rate-limit.ts login retry cap per IP
 lib/attendance.ts       week labels, form validation, email copy
 lib/attendance-sheet.ts hours-sheet photo validation, compression, R2
 lib/images.ts           Cloudflare Images binding
-lib/coi/                upload validation, R2 records, Anthropic review
+lib/coi/                upload validation, R2 records, Anthropic review, email
 skills/coi-review/      SKILL.md used as the review prompt
 proxy.ts                copies the request path so login can send people back
 worker.ts               OpenNext fetch handler + Wednesday cron
@@ -128,4 +132,4 @@ Review instructions live in [`skills/coi-review/SKILL.md`](skills/coi-review/SKI
 
 ## Cost
 
-Workers, R2, Images transformations (hours-sheet shrinks), and mail to the two verified Gmail addresses stay in the free tier at family volume. Anthropic is billed per review. Idle is $0.
+Workers, R2, Images transformations (hours-sheet shrinks), and mail to the verified destination addresses stay in the free tier at family volume. Anthropic is billed per review. Idle is $0.
