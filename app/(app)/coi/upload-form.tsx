@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { uploadCoi, type UploadCoiState } from "@/app/actions/coi";
+import { uploadCoi } from "@/app/actions/coi";
 import { snapshotCoiFile } from "@/lib/coi/snapshot";
 
 export function UploadForm() {
@@ -12,6 +12,15 @@ export function UploadForm() {
   const [dragOver, setDragOver] = useState(false);
   const [reading, setReading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [state, formAction, pending] = useActionState(uploadCoi, undefined);
+  const error = localError ?? state?.error;
+  const busy = pending || reading;
+
+  useEffect(() => {
+    if (state?.id) {
+      router.push(`/coi/${state.id}`);
+    }
+  }, [router, state?.id]);
 
   async function captureFile(input: HTMLInputElement, file: File | undefined) {
     if (!file) {
@@ -36,32 +45,6 @@ export function UploadForm() {
       setReading(false);
     }
   }
-
-  async function submit(
-    _prev: UploadCoiState | undefined,
-    formData: FormData,
-  ): Promise<UploadCoiState> {
-    const file = fileRef.current;
-    if (file) {
-      formData.set("file", file);
-    }
-
-    try {
-      return await uploadCoi(_prev, formData);
-    } catch {
-      return { error: "That upload didn't go through. Try again." };
-    }
-  }
-
-  const [state, formAction, pending] = useActionState(submit, undefined);
-  const error = localError ?? state?.error;
-  const busy = pending || reading;
-
-  useEffect(() => {
-    if (state?.id) {
-      router.push(`/coi/${state.id}`);
-    }
-  }, [router, state?.id]);
 
   return (
     <form

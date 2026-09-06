@@ -24,6 +24,7 @@ export async function uploadCoi(
   formData: FormData,
 ): Promise<UploadCoiState> {
   if (!(await isAuthenticated())) {
+    console.warn("COI upload rejected", "Please log in again.");
     return { error: "Please log in again." };
   }
 
