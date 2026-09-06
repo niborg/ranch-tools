@@ -34,6 +34,16 @@ describe("validateCoiFile", () => {
     });
   });
 
+  it("accepts a Blob that is not a File", () => {
+    const blob = new Blob([new Uint8Array(64)], { type: "application/pdf" });
+    const result = validateCoiFile(blob);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.file).toBeInstanceOf(File);
+      expect(result.file.name).toBe("upload.pdf");
+    }
+  });
+
   it("rejects a file over 10 MB", () => {
     expect(validateCoiFile(pdf("huge.pdf", MAX_COI_BYTES + 1))).toEqual({
       ok: false,

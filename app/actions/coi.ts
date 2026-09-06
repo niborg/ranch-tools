@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { isAuthenticated } from "@/lib/auth";
 import { runCoiReview } from "@/lib/coi/review";
 import { readCoiMeta, writeCoiMeta, writeCoiPdf } from "@/lib/coi/storage";
@@ -12,7 +11,8 @@ import {
 import { validateCoiFile } from "@/lib/coi/validate";
 
 export type UploadCoiState = {
-  error: string;
+  error?: string;
+  id?: string;
 };
 
 export type GetCoiReviewResult =
@@ -29,6 +29,7 @@ export async function uploadCoi(
 
   const validation = validateCoiFile(formData.get("file"));
   if (!validation.ok) {
+    console.warn("COI upload rejected", validation.error);
     return { error: validation.error };
   }
 
@@ -46,7 +47,8 @@ export async function uploadCoi(
     return { error: "Uploads aren't configured yet." };
   }
 
-  redirect(`/coi/${id}`);
+  console.log("COI uploaded", id);
+  return { id };
 }
 
 export async function getCoiReview(

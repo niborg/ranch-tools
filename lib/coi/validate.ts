@@ -5,12 +5,13 @@ export type CoiFileValidation =
   | { ok: false; error: string };
 
 export function validateCoiFile(value: unknown): CoiFileValidation {
-  if (!(value instanceof File) || value.size === 0) {
+  if (!(value instanceof Blob) || value.size === 0) {
     return { ok: false, error: "Choose a PDF to upload." };
   }
 
+  const name = value instanceof File && value.name ? value.name : "upload.pdf";
   const isPdf =
-    value.type === "application/pdf" || value.name.toLowerCase().endsWith(".pdf");
+    value.type === "application/pdf" || name.toLowerCase().endsWith(".pdf");
   if (!isPdf) {
     return { ok: false, error: "That needs to be a PDF." };
   }
@@ -19,5 +20,12 @@ export function validateCoiFile(value: unknown): CoiFileValidation {
     return { ok: false, error: "That file is too large. Keep it under 10 MB." };
   }
 
-  return { ok: true, file: value };
+  const file =
+    value instanceof File
+      ? value
+      : new File([value], name, {
+          type: value.type || "application/pdf",
+        });
+
+  return { ok: true, file };
 }

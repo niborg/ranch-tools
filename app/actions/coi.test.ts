@@ -5,13 +5,6 @@ const writeCoiPdf = vi.fn();
 const writeCoiMeta = vi.fn();
 const readCoiMeta = vi.fn();
 const runCoiReview = vi.fn();
-const redirect = vi.fn((url: string) => {
-  throw new Error(`NEXT_REDIRECT:${url}`);
-});
-
-vi.mock("next/navigation", () => ({
-  redirect: (url: string) => redirect(url),
-}));
 
 vi.mock("@/lib/auth", () => ({
   isAuthenticated: () => isAuthenticated(),
@@ -43,7 +36,6 @@ describe("uploadCoi", () => {
     writeCoiPdf.mockReset();
     writeCoiMeta.mockReset();
     runCoiReview.mockReset();
-    redirect.mockClear();
   });
 
   it("asks the visitor to log in again when the session is gone", async () => {
@@ -64,7 +56,7 @@ describe("uploadCoi", () => {
     expect(writeCoiPdf).not.toHaveBeenCalled();
   });
 
-  it("stores the PDF and redirects to the wait page", async () => {
+  it("stores the PDF and returns the review id", async () => {
     isAuthenticated.mockResolvedValue(true);
     writeCoiPdf.mockResolvedValue(undefined);
     writeCoiMeta.mockResolvedValue(undefined);
@@ -73,15 +65,12 @@ describe("uploadCoi", () => {
       type: "application/pdf",
     });
 
-    await expect(uploadCoi(undefined, formWith(file))).rejects.toThrow(
-      /^NEXT_REDIRECT:\/coi\//,
-    );
+    const result = await uploadCoi(undefined, formWith(file));
+    expect(result.id).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(result.error).toBeUndefined();
     expect(writeCoiPdf).toHaveBeenCalledOnce();
     expect(writeCoiMeta).toHaveBeenCalledOnce();
     expect(runCoiReview).not.toHaveBeenCalled();
-    expect(redirect.mock.calls[0][0]).toMatch(
-      /^\/coi\/[0-9a-f-]{36}$/i,
-    );
   });
 
   it("returns a friendly error when R2 is missing", async () => {
@@ -95,7 +84,6 @@ describe("uploadCoi", () => {
     await expect(uploadCoi(undefined, formWith(file))).resolves.toEqual({
       error: "Uploads aren't configured yet.",
     });
-    expect(redirect).not.toHaveBeenCalled();
   });
 });
 
